@@ -1,0 +1,15 @@
+Options +FollowSymLinks -Multiviews
+
+<IfModule mod_rewrite.c>
+
+    SetEnv HTTP_MOD_REWRITE On
+    RewriteEngine on
+    IndexIgnore *	
+    Options +MultiViews
+    
+    ErrorDocument 404   /pageNotFound.php
+    
+    RewriteCond %{REQUEST_FILENAME} !-d
+    RewriteCond %{REQUEST_FILENAME} !-f
+
+</IfModule>
