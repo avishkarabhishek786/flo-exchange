@@ -8,15 +8,19 @@
 
 require_once '../includes/imp_files.php';
 
-if (isset($_POST['task']) && trim($_POST['task'])=='loadTradeList') {
+if (!checkLoginStatus()) {
+    return false;
+}
+
+if (isset($_POST['task']) && trim($_POST['task'])=='myTransactions') {
 
     $std = new stdClass();
     $std->trade_list = array();
     $std->error = true;
 
-    if (isset($OrderClass, $UserClass)) {
+    if (isset($UserClass, $user_id)) {
 
-        $tradeList = $OrderClass->last_transaction_list(0,10);
+        $tradeList = $UserClass->displayUserTransaction($user_id, 0, 10);
 
         $std->trade_list = $tradeList;
         $std->error = false;

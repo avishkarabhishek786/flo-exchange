@@ -16,7 +16,7 @@ class Users {
     private $user_name = null;
     private $email = null;
     private $name = null;
-    private $mob = null;
+    private $is_active = null;
     private $user_is_logged_in = false;
     private $errors = array();
 
@@ -85,13 +85,13 @@ class Users {
 
             } else {
 
-                $this->user_name = $_SESSION['FIRSTNAME'].time();
-                $this->name = $_SESSION['FULLNAME'];
-                $this->email = $_SESSION['EMAIL'];
+                $this->user_name = $_SESSION['first_name'].time();
+                $this->name = $_SESSION['full_name'];
+                $this->email = $_SESSION['email'];
 
                 $query = $this->db_connection->prepare("
-                    INSERT INTO $this->customers_table (`CustomerId`, `fb_id`, `Username`, `Email`, `Name`, `UpdateDate`, `InsertDate`, `SaveDate`, `Mobile`)
-                    VALUES ('',:fb_id,:Username,:Email,:Name,NULL,NOW(),NULL,NULL)
+                    INSERT INTO $this->customers_table (`CustomerId`, `fb_id`, `Username`, `Email`, `Name`, `UpdateDate`, `InsertDate`, `SaveDate`, `is_active`)
+                    VALUES ('',:fb_id,:Username,:Email,:Name,NULL,NOW(),NULL,0)
                 ");
 
                 $query->bindValue(':fb_id', $fb_id, PDO::PARAM_INT);
@@ -107,7 +107,7 @@ class Users {
                     $crypto = $this->insert_balance($_SESSION['user_id'], $AssetTypeId, $Balance, $FrozenBalance);
 
                     $AssetTypeId = 'traditional';
-                    $Balance = 1000.00;
+                    $Balance = 100.00;
                     $FrozenBalance = 0.00;
                     $cash = $this->insert_balance($_SESSION['user_id'], $AssetTypeId, $Balance, $FrozenBalance);
 
@@ -128,12 +128,12 @@ class Users {
 
         if ($this->databaseConnection()) {
 
-            $query = $this->db_connection->prepare("SELECT * FROM $this->customers_table WHERE customerId = :customerId LIMIT 1");
+            $query = $this->db_connection->prepare("SELECT * FROM $this->customers_table WHERE customerId = :customerId AND is_active = 1 LIMIT 1");
             $query->bindParam('customerId', $customerId);
 
             if ($query->execute()) {
                 $row_count = $query->rowCount();
-                if ($row_count > 0) {
+                if ($row_count == 1) {
                     return $user_details = $query->fetchObject();
                 }
                 return false;
@@ -144,16 +144,17 @@ class Users {
         return false;
     }
 
-    public function displayUserTransaction($user_id) {
+    public function displayUserTransaction($user_id, $start=0, $limit=10) {
         if ($this->databaseConnection()) {
             $transactions = array();
+
             $query = $this->db_connection->prepare("
-                SELECT TransactionId AS T_ID, a_buyer AS BUYER_ID, b_seller AS SELLER_ID, (SELECT customer.Name FROM customer WHERE customer.CustomerId=BUYER_ID) AS BUYER, (SELECT customer.Name FROM customer WHERE customer.CustomerId=SELLER_ID) AS SELLER, B_AMOUNT AS TRADE_PRICE, transaction.InsertDate
+                SELECT TransactionId AS T_ID, a_buyer AS BUYER_ID, b_seller AS SELLER_ID, (SELECT customer.Name FROM customer WHERE customer.CustomerId=BUYER_ID) AS BUYER, (SELECT customer.Name FROM customer WHERE customer.CustomerId=SELLER_ID) AS SELLER, B_AMOUNT AS TRADE_PRICE, transaction.InsertDate, transaction.qty_traded AS TRADED_QTY
                 FROM transaction, customer
                 WHERE `a_buyer`= :u_id OR `b_seller`= :u_id
                 GROUP BY T_ID
                 ORDER BY T_ID DESC
-                LIMIT 50
+                LIMIT $start, $limit
             ");
             $query->bindParam('u_id', $user_id);
             if ($query->execute()) {
@@ -169,5 +170,49 @@ class Users {
         return false;
     }
 
+    public function list_messages_by_userId($user_id, $start=0, $limit=10) {
+        if ($this->databaseConnection()) {
+            $messages = array();
+
+            $query = $this->db_connection->prepare("
+                SELECT * FROM `messages` WHERE `username_key`= :uk
+                ORDER BY order_id DESC 
+                LIMIT $start, $limit
+             ");
+            $query->bindParam("uk", $user_id);
+            if ($query->execute()) {
+                $rowCount = $query->rowCount();
+                if ($rowCount > 0) {
+                    while ($tr = $query->fetchObject()) {
+                        $messages[] = $tr;
+                    }
+                }
+            }
+            return $messages;
+        }
+        return false;
+    }
+
+    public function actions_user($u_id, $act=1) {
+        if ($this->databaseConnection()) {
+            if (!empty($u_id)) {
+
+                $act = (int) $act;
+                $u_id = (int) $u_id;
+
+                $query = $this->db_connection->prepare("
+                    UPDATE `customer` SET `is_active`= $act 
+                    WHERE CustomerId = :u_id
+                    LIMIT 1
+                ");
+                $query->bindParam('u_id', $u_id);
+
+                if ($query->execute()) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
 
 }

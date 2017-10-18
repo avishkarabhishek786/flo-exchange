@@ -6,33 +6,20 @@
  * Time: 1:55 PM
  */
 
-require_once '../includes/autoload.php';
+require_once '../includes/imp_files.php';
 
-if (!isset($_SESSION['user_id'])) {
+if (!checkLoginStatus()) {
     return false;
-} else {
-    $user_id = $_SESSION['user_id'];
-    $user_name = $_SESSION['user_name'];
 }
 
 if (isset($_POST['subject']) && trim($_POST['subject'])=='placeOrder') {
 
     if (isset($_POST['btn_id'], $_POST['qty'], $_POST['price'])) {
 
-        $btn_id = $_POST['btn_id'];
-        $qty = (float) $_POST['qty'];
-        $item_price = (float) $_POST['price'];
+        $btn_id = trim($_POST['btn_id']);
+        $qty = two_decimal_digit($_POST['qty']);
+        $item_price = two_decimal_digit($_POST['price']);
         $orderStatusId = 2; // 0 -> cancelled; 1 -> complete; 2 -> pending
-
-        if($btn_id == 'buy_btn') {
-            $orderTypeId = 0; // It is a buy
-            $OfferAssetTypeId= 'INR';
-            $WantAssetTypeId = 'FLO';
-        } else if($btn_id == 'sell_btn') {
-            $orderTypeId = 1; // It is a sell
-            $OfferAssetTypeId = 'FLO';
-            $WantAssetTypeId = 'INR';
-        }
 
         $std = new stdClass();
         $std->user = null;
@@ -40,9 +27,24 @@ if (isset($_POST['subject']) && trim($_POST['subject'])=='placeOrder') {
         $std->error = false;
         $std->msg = null;
 
-        if ($qty == 0 || $item_price == 0) {
+        if($btn_id == 'buy_btn') {
+            $orderTypeId = 0; // It is a buy
+            $OfferAssetTypeId= 'USD';
+            $WantAssetTypeId = 'RTM';
+        } else if($btn_id == 'sell_btn') {
+            $orderTypeId = 1; // It is a sell
+            $OfferAssetTypeId = 'RTM';
+            $WantAssetTypeId = 'USD';
+        } else {
             $std->error = true;
-            $std->msg = 'Please insert valid quantity and price.';
+            $std->msg = "Invalid button id.";
+            echo json_encode($std);
+            return false;
+        }
+
+        if ($qty < 0.01 || $item_price < 0.01) {
+            $std->error = true;
+            $std->msg = 'Please insert valid quantity and price. Minimum trade price is 1 cent.';
             echo json_encode($std);
             return false;
         }
@@ -50,10 +52,9 @@ if (isset($_POST['subject']) && trim($_POST['subject'])=='placeOrder') {
         $validate_user = "";
         $place_order = "";
 
-        if (class_exists('Users') && class_exists('Orders')) {
+        if (isset($OrderClass, $UserClass, $user_id)) {
 
-            $customer = new Users();
-            $validate_user = $customer->check_user($user_id);
+            $validate_user = $UserClass->check_user($user_id);
 
             if($validate_user == "" || empty($validate_user)) {
                 $std->error = true;
@@ -62,8 +63,7 @@ if (isset($_POST['subject']) && trim($_POST['subject'])=='placeOrder') {
                 return false;
             }
 
-            $initial_orders = new Orders();
-            $place_order = $initial_orders->insert_pending_order($orderTypeId, $qty, $item_price, $orderStatusId, $OfferAssetTypeId, $WantAssetTypeId);
+            $place_order = $OrderClass->insert_pending_order($orderTypeId, abs($qty), abs($item_price), $orderStatusId, $OfferAssetTypeId, $WantAssetTypeId);
 
         } else {
             $std->error = true;

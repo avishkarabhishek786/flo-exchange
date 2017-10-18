@@ -4,8 +4,8 @@ if(!session_id()) {
 }
 require_once 'vendor/autoload.php';
 $fb = new Facebook\Facebook([
-    'app_id' => 'xxxxx',
-    'app_secret' => 'xxxxxxxxxxxxxxxxxxxxxxxxxxxxx',
+    'app_id' => 'xxxxxxxxxxxxxxxxx',
+    'app_secret' => 'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx',
     'default_graph_version' => 'v2.8',
 ]);
 $helper = $fb->getRedirectLoginHelper();
@@ -74,14 +74,14 @@ if (isset($accessToken)) {
     //$gender = isset($profile['gender']) ? $profile['gender'] : null;
     $fb_id = isset($profile['id']) ? $profile['id'] : null;
 
-	$_SESSION['FIRSTNAME'] = $first_name;
-    $_SESSION['FULLNAME'] = $name;
-    $_SESSION['EMAIL'] = $email;
-    $_SESSION['FBID'] = $fb_id;
+    $_SESSION['first_name'] = $first_name;
+    $_SESSION['full_name'] = $name;
+    $_SESSION['email'] = $email;
+    $_SESSION['fb_id'] = $fb_id;
 
     // Now you can redirect to another page and use the access token from $_SESSION['facebook_access_token']
 
 } else {
     // replace your website URL same as added in the developers.facebook.com/apps e.g. if you used http instead of https and you used non-www version or www version of your website then you must add the same here
-    $loginUrl = $helper->getLoginUrl('http://ranchimall.net/exchange/fbconfig.php', $permissions);
+    $loginUrl = $helper->getLoginUrl('http://something.com/fbconfig.php', $permissions);
 }

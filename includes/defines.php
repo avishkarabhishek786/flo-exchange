@@ -35,10 +35,10 @@ if(isset($_SESSION['user_name'])) {
 
 
 //JS DIR
-defined("JS_DIR") || define("JS_DIR", "JS");
+defined("JS_DIR") || define("JS_DIR", "js");
 
 //STYLE DIR
-defined("STYLE_DIR") || define("STYLE_DIR", "style");
+defined("STYLE_DIR") || define("STYLE_DIR", "css");
 
 
 //add all above directories to the include path

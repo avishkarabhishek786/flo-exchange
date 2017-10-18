@@ -6,13 +6,10 @@
  * Time: 7:10 PM
  */
 
-require_once '../includes/autoload.php';
+require_once '../includes/imp_files.php';
 
-if (!isset($_SESSION['user_id'])) {
+if (!checkLoginStatus()) {
     return false;
-} else {
-    $user_id = $_SESSION['user_id'];
-    $user_name = $_SESSION['user_name'];
 }
 
 if(isset($_POST['job']) && $_POST['job'] == 'market_order') {
@@ -23,10 +20,9 @@ if(isset($_POST['job']) && $_POST['job'] == 'market_order') {
     $std->error = false;
     $std->msg = null;
 
-    if(class_exists('Orders') && class_exists('Users')) {
+    if (isset($OrderClass, $UserClass, $user_id)) {
 
-        $customer = new Users();
-        $validate_user = $customer->check_user($user_id);
+        $validate_user = $UserClass->check_user($user_id);
 
         if($validate_user == "" || empty($validate_user)) {
             $std->error = true;
@@ -42,10 +38,10 @@ if(isset($_POST['job']) && $_POST['job'] == 'market_order') {
     $std->user = $validate_user;
 
     if(isset($_POST['qty'], $_POST['type'])) {
-        $qty = (float)$_POST['qty'];
+        $qty = two_decimal_digit($_POST['qty']);
         $order_type = $_POST['type'];
 
-        if($qty > 0) {
+        if($qty >= 0.01) {
             if(is_string($order_type)) {
                 if(trim($order_type) == 'market_buy_btn' || trim($order_type) == 'market_sell_btn') {
 
@@ -60,8 +56,7 @@ if(isset($_POST['job']) && $_POST['job'] == 'market_order') {
                         return false;
                     }
 
-                    $Orders = new Orders();
-                    $run_market_order = $Orders->market_order($order_type, $qty);
+                    $run_market_order = $OrderClass->market_order($order_type, abs($qty));
 
                     $std->user = $validate_user;
                     $std->order = $run_market_order;

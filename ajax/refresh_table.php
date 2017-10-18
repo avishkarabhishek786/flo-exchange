@@ -6,7 +6,7 @@
  * Time: 6:22 PM
  */
 
-require_once '../includes/autoload.php';
+require_once '../includes/imp_files.php';
 
 if (isset($_POST['task']) && trim($_POST['task'])=='refresh') {
 
@@ -16,11 +16,10 @@ if (isset($_POST['task']) && trim($_POST['task'])=='refresh') {
     $std->message = array();
     $std->error = true;
 
-    if (class_exists('Orders')) {
+    if (isset($OrderClass, $UserClass)) {
 
-        $refresh_orders = new Orders();
-        $buy_list = $refresh_orders->get_top_buy_sell_list($top_table='active_buy_list', $asc_desc='DESC');  // buy
-        $sell_list = $refresh_orders->get_top_buy_sell_list($top_table='active_selling_list', $asc_desc='ASC');  // sell
+        $buy_list = $OrderClass->get_top_buy_sell_list($top_table='active_buy_list', $asc_desc='DESC');  // buy
+        $sell_list = $OrderClass->get_top_buy_sell_list($top_table='active_selling_list', $asc_desc='ASC');  // sell
 
         $std->buys = $buy_list;
         $std->sells = $sell_list;

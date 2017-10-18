@@ -6,15 +6,11 @@
  * Time: 8:36 PM
  */
 
-require_once '../includes/autoload.php';
+require_once '../includes/imp_files.php';
 
-if (!isset($_SESSION['user_id'])) {
+if (!checkLoginStatus()) {
     return false;
-} else {
-    $user_id = $_SESSION['user_id'];
-    $user_name = $_SESSION['user_name'];
 }
-
 if (isset($_POST['task']) && trim($_POST['task'])=='get_my_balance') {
 
     $std = new stdClass();
@@ -24,14 +20,14 @@ if (isset($_POST['task']) && trim($_POST['task'])=='get_my_balance') {
     $std->message = array();
     $std->error = true;
 
-    if (class_exists('Users') && class_exists('Orders')) {
+    if (isset($OrderClass, $UserClass, $user_id)) {
 
-        $customer = new Users();
-        $validate_user = $customer->check_user($user_id);
+        $UserClass = new Users();
+        $validate_user = $UserClass->check_user($user_id);
 
-        $validate_balance = new Orders();
-        $cash_balance = $validate_balance->check_customer_balance($assetType = 'traditional', $user_id)->Balance;
-        $bit_balance = $validate_balance->check_customer_balance($assetType = 'btc', $user_id)->Balance;
+        $OrderClass = new Orders();
+        $cash_balance = $OrderClass->check_customer_balance($assetType = 'traditional', $user_id)->Balance;
+        $bit_balance = $OrderClass->check_customer_balance($assetType = 'btc', $user_id)->Balance;
 
         $std->users = $validate_user;
         $std->cash = $cash_balance;

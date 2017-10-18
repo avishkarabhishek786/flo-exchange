@@ -41,4 +41,4 @@ if(isset($_GET['msg'])) {
     </body>
     </html>
 
-<?php } else {echo "kjhkh";} ?>
+<?php } ?>
