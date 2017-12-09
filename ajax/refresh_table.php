@@ -18,8 +18,8 @@ if (isset($_POST['task']) && trim($_POST['task'])=='refresh') {
 
     if (isset($OrderClass, $UserClass)) {
 
-        $buy_list = $OrderClass->get_top_buy_sell_list($top_table='active_buy_list', $asc_desc='DESC');  // buy
-        $sell_list = $OrderClass->get_top_buy_sell_list($top_table='active_selling_list', $asc_desc='ASC');  // sell
+        $buy_list = $OrderClass->get_top_buy_sell_list(TOP_BUYS_TABLE, $asc_desc='DESC');  // buy
+        $sell_list = $OrderClass->get_top_buy_sell_list(TOP_SELL_TABLE, $asc_desc='ASC');  // sell
 
         $std->buys = $buy_list;
         $std->sells = $sell_list;

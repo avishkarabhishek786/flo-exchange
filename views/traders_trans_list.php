@@ -12,6 +12,10 @@ if (isset($tradersList) && is_array($tradersList) && !empty($tradersList)) { ?>
         <div class="container">
 
             <div class="col-lg-6">
+                <?php include_once 'traders_list.php'; ?>
+            </div>
+            
+            <div class="col-lg-6">
                 <h4>Recent Transactions</h4>
                 <h5><a href="Recent_Transactions" target="_blank">View All</a></h5>
                 <div class="table-responsive mt--2">
@@ -29,10 +33,6 @@ if (isset($tradersList) && is_array($tradersList) && !empty($tradersList)) { ?>
                     <tbody id="trade-list"></tbody>
                 </table>
                 </div>
-            </div>
-
-            <div class="col-lg-6">
-                <?php include_once 'traders_list.php'; ?>
             </div>
 
         </div>

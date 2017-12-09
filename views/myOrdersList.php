@@ -11,13 +11,13 @@ if ($user_logged_in) { ?>
                     <table class="table table-striped" cellpadding="10" cellspacing="0" width="100%">
                         <thead>
                         <tr>
-                            <th>Item Sold</th>
-                            <th>Item Bought</th>
                             <th>Price ($)</th>
                             <th>Quantity</th>
+                            <th>Cancel Order</th>
+                            <th>Item Sold</th>
+                            <th>Item Bought</th>
                             <th>Status</th>
                             <th>Date</th>
-                            <th>Cancel Order</th>
                         </tr>
                         </thead>
                         <tbody id="myOrdersTable"></tbody>

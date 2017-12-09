@@ -9,10 +9,15 @@
 class Users {
 
     protected $db_connection = null;
-    private $customers_table = "customer";
-    private $top_buy_table = "active_buy_list";
-    private $top_sell_table = "active_selling_list";
-    private $customer_balance_table = "assetbalance";
+    private $orders_table = ORDERS_TABLE;
+    private $customers_table = USERS_TABLE;
+    private $top_buy_table = TOP_BUYS_TABLE;
+    private $top_sell_table = TOP_SELL_TABLE;
+    private $customer_balance_table = CREDITS_TABLE;
+    private $transaction_table = TRANSACTIONS_TABLE;
+    private $bal_history = CREDITS_HISTORY_TABLE;
+    private $bank_acc = ACCOUNTS_TABLE;
+    private $fund_trans = TRANSFER_INFO_TABLE;
     private $user_name = null;
     private $email = null;
     private $name = null;
@@ -37,9 +42,9 @@ class Users {
     }
 
     private function insert_balance($CustomerId, $AssetTypeId, $Balance, $FrozenBalance) {
-
+        $now = $this->time_now();
         if ($this->databaseConnection()) {
-            $query = $this->db_connection->prepare("INSERT INTO `$this->customer_balance_table`(`sr_no`, `CustomerId`, `AssetTypeId`, `Balance`, `FrozenBalance`, `UpdateDate`, `InsertDate`, `SaveDate`) VALUES ('', :CustomerId,:AssetTypeId,:Balance,:FrozenBalance,NULL,NOW(),NOW())");
+            $query = $this->db_connection->prepare("INSERT INTO `$this->customer_balance_table`(`sr_no`, `CustomerId`, `AssetTypeId`, `Balance`, `FrozenBalance`, `UpdateDate`, `InsertDate`, `SaveDate`) VALUES ('', :CustomerId,:AssetTypeId,:Balance,:FrozenBalance,NULL,'$now','$now')");
             $query->bindValue(':CustomerId', $CustomerId, PDO::PARAM_STR);
             $query->bindValue(':AssetTypeId', $AssetTypeId, PDO::PARAM_STR);
             $query->bindValue(':Balance', $Balance, PDO::PARAM_STR);
@@ -55,7 +60,7 @@ class Users {
     public function is_fb_registered($fb_id) {
 
         if ($this->databaseConnection()) {
-
+            $now = $this->time_now();
             $query = $this->db_connection->prepare("SELECT * FROM $this->customers_table WHERE `fb_id`=:fb_id");
             $query->bindValue(':fb_id', $fb_id, PDO::PARAM_STR);
             $query->execute();
@@ -66,21 +71,20 @@ class Users {
 
                 $user_obj = $query->fetchObject();
 
-                $user_email = $user_obj->Email;
-
-                if($user_email !== '' || $user_email !== null) {
-
-                    $update_query = $this->db_connection->prepare("UPDATE $this->customers_table
-                                                            SET `Email`=:email, `UpdateDate`=NOW(), `SaveDate`=NOW()
+                $update_query = $this->db_connection->prepare("UPDATE $this->customers_table
+                                                            SET `SaveDate`='$now'
                                                             WHERE `fb_id`=:fb_id
                                                             LIMIT 1");
-                    $update_query->bindValue(':email', $user_email, PDO::PARAM_STR);
-                    $update_query->bindValue(':fb_id', $fb_id, PDO::PARAM_STR);
-                    $update_query->execute();
-                }
+                $update_query->bindValue(':fb_id', $fb_id, PDO::PARAM_STR);
+                $update_query->execute();
 
                 $_SESSION['user_id'] = $user_obj->CustomerId;
                 $_SESSION['user_name'] = $user_obj->Username;
+                $_SESSION['email'] = $user_obj->Email;
+
+                if (!isset($_SESSION['last_trade_date'])) {
+                    $_SESSION['last_trade_date'] = $user_obj->SaveDate;
+                }
                 return true;
 
             } else {
@@ -91,7 +95,7 @@ class Users {
 
                 $query = $this->db_connection->prepare("
                     INSERT INTO $this->customers_table (`CustomerId`, `fb_id`, `Username`, `Email`, `Name`, `UpdateDate`, `InsertDate`, `SaveDate`, `is_active`)
-                    VALUES ('',:fb_id,:Username,:Email,:Name,NULL,NOW(),NULL,0)
+                    VALUES ('',:fb_id,:Username,:Email,:Name,NULL,'$now',NULL,0)
                 ");
 
                 $query->bindValue(':fb_id', $fb_id, PDO::PARAM_INT);
@@ -102,12 +106,12 @@ class Users {
                     $_SESSION['user_id'] = $this->db_connection->lastInsertId();
                     $_SESSION['user_name'] = $this->user_name;
                     $AssetTypeId = 'btc';
-                    $Balance = 10.00;
+                    $Balance = 0.00;
                     $FrozenBalance = 0.00;
                     $crypto = $this->insert_balance($_SESSION['user_id'], $AssetTypeId, $Balance, $FrozenBalance);
 
                     $AssetTypeId = 'traditional';
-                    $Balance = 100.00;
+                    $Balance = 0.00;
                     $FrozenBalance = 0.00;
                     $cash = $this->insert_balance($_SESSION['user_id'], $AssetTypeId, $Balance, $FrozenBalance);
 
@@ -149,8 +153,8 @@ class Users {
             $transactions = array();
 
             $query = $this->db_connection->prepare("
-                SELECT TransactionId AS T_ID, a_buyer AS BUYER_ID, b_seller AS SELLER_ID, (SELECT customer.Name FROM customer WHERE customer.CustomerId=BUYER_ID) AS BUYER, (SELECT customer.Name FROM customer WHERE customer.CustomerId=SELLER_ID) AS SELLER, B_AMOUNT AS TRADE_PRICE, transaction.InsertDate, transaction.qty_traded AS TRADED_QTY
-                FROM transaction, customer
+                SELECT TransactionId AS T_ID, a_buyer AS BUYER_ID, b_seller AS SELLER_ID, (SELECT ".USERS_TABLE.".Name FROM ".USERS_TABLE." WHERE ".USERS_TABLE.".CustomerId=BUYER_ID) AS BUYER, (SELECT ".USERS_TABLE.".Name FROM ".USERS_TABLE." WHERE ".USERS_TABLE.".CustomerId=SELLER_ID) AS SELLER, B_AMOUNT AS TRADE_PRICE, ".TRANSACTIONS_TABLE.".InsertDate, ".TRANSACTIONS_TABLE.".qty_traded AS TRADED_QTY
+                FROM ".TRANSACTIONS_TABLE.", ".USERS_TABLE."
                 WHERE `a_buyer`= :u_id OR `b_seller`= :u_id
                 GROUP BY T_ID
                 ORDER BY T_ID DESC
@@ -175,8 +179,8 @@ class Users {
             $messages = array();
 
             $query = $this->db_connection->prepare("
-                SELECT * FROM `messages` WHERE `username_key`= :uk
-                ORDER BY order_id DESC 
+                SELECT * FROM ".MSG_TABLE." WHERE `username_key`= :uk
+                ORDER BY datetime DESC 
                 LIMIT $start, $limit
              ");
             $query->bindParam("uk", $user_id);
@@ -201,7 +205,7 @@ class Users {
                 $u_id = (int) $u_id;
 
                 $query = $this->db_connection->prepare("
-                    UPDATE `customer` SET `is_active`= $act 
+                    UPDATE ".USERS_TABLE." SET `is_active`= $act 
                     WHERE CustomerId = :u_id
                     LIMIT 1
                 ");
@@ -210,6 +214,55 @@ class Users {
                 if ($query->execute()) {
                     return true;
                 }
+            }
+        }
+        return false;
+    }
+    
+    public function get_total_users_count() {
+        if ($this->databaseConnection()) {
+            $total_users = 0;
+            $query = $this->db_connection->query("SELECT COUNT(*) AS TOTAL_COUNT FROM ".USERS_TABLE." WHERE `is_active`=1");
+            if ($query->rowCount()) {
+                $total_users = $query->fetchObject()->TOTAL_COUNT;
+            }
+            return (int) $total_users;
+        }
+        return false;
+    }
+
+    public function time_now() {
+        $n = new DateTime("now", new DateTimeZone("Asia/Kolkata"));
+        $now = $n->format('Y-m-d H:i:s');
+        return $now;
+    }
+
+    public function get_username($customerId=0) {
+
+        if ($this->databaseConnection()) {
+            $customerId = (int) $customerId;
+            $query = $this->db_connection->prepare("SELECT Username FROM ".USERS_TABLE." WHERE customerId = :id LIMIT 1");
+            $query->bindParam('id', $customerId);
+
+            $query->execute();
+            $row_count = $query->rowCount();
+            if ($row_count == 1) {
+                return $query->fetchObject()->Username;
+            }
+        }
+        return false;
+    }
+
+    public function input_user_email($email=null, $user_id=null) {
+        if ($this->databaseConnection()) {
+            $query = $this->db_connection->prepare("
+            UPDATE ".USERS_TABLE." SET `Email`= :em WHERE CustomerId = :cid
+            ");
+            $query->bindParam('em', $email);
+            $query->bindParam('cid', $user_id);
+
+            if ($query->execute()) {
+                return true;
             }
         }
         return false;

@@ -13,13 +13,13 @@
                 <table class="table table-striped table-bordered" id="messages-datatable" cellspacing="0" width="100%" cellpadding="10">
                     <thead>
                     <tr>
-                        <th>Item Sold</th>
-                        <th>Item Bought</th>
                         <th>Price ($)</th>
                         <th>Quantity</th>
+                        <th>Cancel Order</th>
+                        <th>Item Sold</th>
+                        <th>Item Bought</th>
                         <th>Status</th>
                         <th>Date</th>
-                        <th>Cancel Order</th>
                     </tr>
                     </thead>
                     <tbody id="view_all_orders_tb"></tbody>

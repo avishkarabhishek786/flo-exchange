@@ -2,10 +2,11 @@
 if(!session_id()) {
     session_start();
 }
+require_once 'includes/imp_files.php';
 require_once 'vendor/autoload.php';
 $fb = new Facebook\Facebook([
-    'app_id' => 'xxxxxxxxxxxxxxxxx',
-    'app_secret' => 'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx',
+    'app_id' => APP_ID,
+    'app_secret' => APP_SECRET,
     'default_graph_version' => 'v2.8',
 ]);
 $helper = $fb->getRedirectLoginHelper();
@@ -83,5 +84,5 @@ if (isset($accessToken)) {
 
 } else {
     // replace your website URL same as added in the developers.facebook.com/apps e.g. if you used http instead of https and you used non-www version or www version of your website then you must add the same here
-    $loginUrl = $helper->getLoginUrl('http://something.com/fbconfig.php', $permissions);
+    $loginUrl = $helper->getLoginUrl('http://yoursite.com/fbconfig.php', $permissions);
 }

@@ -27,8 +27,7 @@ if (isset($_POST['task'], $_POST['id']) && trim($_POST['task'])=="delOrder") {
         $del_order = $OrderClass->del_order($del_id);
 
         if ($del_order) {
-            print_r($del_order);
-            //return true;
+            echo true;
         }
     }
     return false;

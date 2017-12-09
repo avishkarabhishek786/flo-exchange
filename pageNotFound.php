@@ -16,11 +16,11 @@
             <span style="font-size: 70px;">Woops! Page Not Found.</span>
         </div>
         <div class="panel-body">
-            <h4>Sorry! the page you were looking for does not exists. Press back to return or click <a href="http://maximumdemocracy.com">here</a>.</h4>
+            <h4>Sorry! the page you were looking for does not exists. Press back to return or click <a href="http://ranchimall.net">here</a>.</h4>
         </div>
     </div>
 </div>
-<footer style="text-align: center; position: fixed; bottom: 0; width: 100%;">&copy Maximum Democracy <?=date('Y');?></footer>
+<footer style="text-align: center; position: fixed; bottom: 0; width: 100%;">&copy Ranchi Mall <?=date('Y');?></footer>
 </body>
 </html>
 

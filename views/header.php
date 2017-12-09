@@ -4,9 +4,6 @@
 error_reporting(0);
 @ini_set('display_errors', 0);
 
-require_once('includes/defines.php');
-require_once INCLUDES_DIR.'/imp_files.php';
-
 $tradersList = array();
 $buy_list = array();
 $sell_list = array();
@@ -22,10 +19,11 @@ if (isset($UserClass)) {
     endif;
 
     $tradersList = $OrderClass->UserBalanceList();
-    $buy_list[] = $OrderClass->get_top_buy_sell_list($top_table='active_buy_list', $asc_desc='DESC');  // buy
-    $sell_list[] = $OrderClass->get_top_buy_sell_list($top_table='active_selling_list', $asc_desc='ASC');  // sell
+    $buy_list[] = $OrderClass->get_top_buy_sell_list(TOP_BUYS_TABLE, $asc_desc='DESC');  // buy
+    $sell_list[] = $OrderClass->get_top_buy_sell_list(TOP_SELL_TABLE, $asc_desc='ASC');  // sell
 }
 
+$fullName = isset($_SESSION['full_name']) ? $_SESSION['full_name'] : "";
 $user_logged_in = false;
 $action_class_market = 'fb_log_in';
 $action_class_buy_sell = 'fb_log_in';
@@ -47,7 +45,7 @@ if(checkLoginStatus()) {
     <link rel="stylesheet" href="<?=STYLE_DIR?>/custom.css">
     <link rel="stylesheet" href="<?=STYLE_DIR?>/mate.css">
 
-    <link href="https://fonts.googleapis.com/css?family=Crimson+Text" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css?family=Open+Sans+Condensed:300" rel="stylesheet">
     <!-- jQuery library -->
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.12.4/jquery.min.js"></script>
 
@@ -57,6 +55,7 @@ if(checkLoginStatus()) {
     <script src="<?=JS_DIR?>/notify.js"></script>
 
     <script src="<?=JS_DIR?>/main.js"></script>
+
 </head>
 <?php
 if(isset($_GET['msg']) && $_GET['msg'] !== '') {
@@ -104,14 +103,17 @@ $type = isset($_GET['type']) ? trim($_GET['type']) : 'danger';
             <?php if (isset($OrderClass)) {
                 $LastTradedPrice = $OrderClass->LastTradedPrice();
                 $LastTradedPrice = ($LastTradedPrice !=Null) ? '$ '. $LastTradedPrice->B_Amount : 'No Data';?>
-                <h5 class="mt--2 text--uppercase text--bold text--center--mobile">Last Traded Price: <?=$LastTradedPrice;?></h5>
+                <h5 class="font-20 mt--2 text--uppercase text--bold text--center--mobile">Last Traded Price: <span id="_ltp"><?=$LastTradedPrice;?></span></h5>
             <?php } ?>
         </div>
         <?php if($user_logged_in) { ?>
             <div class="col-sm-6 text-right text--uppercase text--center--mobile ">
+                <h2 class="text--uppercase"><?=$fullName?></h2>
                 <h6 class="text--bold">Token Balance: <span id="my_bit_balance">loading...</span> </h6>
                 <h6 class="text--bold">Cash Balance: $ <span id="my_cash_balance">loading...</span> </h6>
             </div>
         <?php } ?>
     </div>
 </div>
+
+<?php if ($user_logged_in) {include_once 'req_user_info.php';} ?>

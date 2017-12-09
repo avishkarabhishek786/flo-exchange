@@ -1,0 +1,7 @@
+{
+    "require": {
+        "facebook/php-sdk-v4": "^5.0",
+        "slim/slim": "^3.0",
+        "nesbot/carbon": "~1.21"
+    }
+}

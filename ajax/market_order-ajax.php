@@ -38,7 +38,7 @@ if(isset($_POST['job']) && $_POST['job'] == 'market_order') {
     $std->user = $validate_user;
 
     if(isset($_POST['qty'], $_POST['type'])) {
-        $qty = two_decimal_digit($_POST['qty']);
+        $qty = (float) $_POST['qty'];
         $order_type = $_POST['type'];
 
         if($qty >= 0.01) {
@@ -56,7 +56,7 @@ if(isset($_POST['job']) && $_POST['job'] == 'market_order') {
                         return false;
                     }
 
-                    $run_market_order = $OrderClass->market_order($order_type, abs($qty));
+                    $run_market_order = $OrderClass->market_order($order_type, $qty);
 
                     $std->user = $validate_user;
                     $std->order = $run_market_order;

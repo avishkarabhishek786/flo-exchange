@@ -67,17 +67,17 @@ if(isset($_POST['req']) && $_POST['req'] == 'loadMoreMyOrders') {
                         }
 
                         $iter .= "<tr>";
-                        $iter .= "<td>$myOrder->OfferAssetTypeId</td>";
-                        $iter .= "<td>$myOrder->WantAssetTypeId</td>";
                         $iter .= "<td>$myOrder->Price</td>";
                         $iter .= "<td>$myOrder->Quantity</td>";
-                        $iter .= "<td>$status</td>";
-                        $iter .= "<td>".date('d M, Y h:i:sa', strtotime($myOrder->InsertDate))."</td>";
                         $iter .= "<td>";
                         if (trim($status) == 'Pending') {
-                            $iter .= "<button class='btn btn-danger btn-xs del_order' id='del_$myOrder->OrderId'>Cancel</button></td>";
+                            $iter .= "<button class='btn-danger del_order' id='del_$myOrder->OrderId'>Cancel</button></td>";
                         }
                         $iter .= "</td>";
+                        $iter .= "<td>$myOrder->OfferAssetTypeId</td>";
+                        $iter .= "<td>$myOrder->WantAssetTypeId</td>";
+                        $iter .= "<td>$status</td>";
+                        $iter .= "<td>".date('d M, Y h:i:sa', strtotime($myOrder->InsertDate))."</td>";
                         $iter .= "</tr>";
                     endforeach;
                 }

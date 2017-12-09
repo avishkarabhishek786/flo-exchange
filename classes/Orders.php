@@ -11,13 +11,15 @@ class Orders extends Users {
 
     protected $db_connection = null;
     private $errors = array();
-    private $orders_table = "orderbook";
-    private $customers_table = "customer";
-    private $top_buy_table = "active_buy_list";
-    private $top_sell_table = "active_selling_list";
-    private $customer_balance_table = "assetbalance";
-    private $transaction_table = "transaction";
-    private $bal_history = "bal_history";
+    private $orders_table = ORDERS_TABLE;
+    private $customers_table = USERS_TABLE;
+    private $top_buy_table = TOP_BUYS_TABLE;
+    private $top_sell_table = TOP_SELL_TABLE;
+    private $customer_balance_table = CREDITS_TABLE;
+    private $transaction_table = TRANSACTIONS_TABLE;
+    private $bal_history = CREDITS_HISTORY_TABLE;
+    private $bank_acc = ACCOUNTS_TABLE;
+    private $fund_trans = TRANSFER_INFO_TABLE;
     private $customerId = 0;
     private $orderTypeId = 0;
     private $quantity = 0;
@@ -31,8 +33,12 @@ class Orders extends Users {
     private function insert_order_in_active_table($top_table, $orderId, $price, $quantity) {
 
         if ($this->databaseConnection()) {
+
+            $n = new DateTime("now", new DateTimeZone("Asia/Kolkata"));
+            $now = $n->format('Y-m-d H:i:s');
+
             $query = $this->db_connection->prepare("INSERT INTO $top_table(`price`, `orderId`, `quantity`, `customerId`, `insertDate`)
-                      VALUES (:price, :orderId, :quantity, :user_id, NOW())");
+                      VALUES (:price, :orderId, :quantity, :user_id, '$now')");
             $query->bindParam("price", $price);
             $query->bindParam("orderId", $orderId);
             $query->bindParam("quantity", $quantity);
@@ -68,8 +74,11 @@ class Orders extends Users {
 
     public function record_bal_history($user_id, $balance, $type) {
         if ($this->databaseConnection()) {
+
+            $now = $this->time_now();
+
             $query = $this->db_connection->prepare("INSERT INTO $this->bal_history (`id`, `user_id`, `balance`, `AssetType`, `datetime`) 
-                      VALUES ('', :uid, :bal, :asset_type, NOW())");
+                      VALUES ('', :uid, :bal, :asset_type, '$now')");
             $query->bindParam('uid', $user_id);
             $query->bindParam('bal', $balance);
             $query->bindParam('asset_type', $type);
@@ -84,19 +93,19 @@ class Orders extends Users {
     public function update_user_balance($assetType, $balance=null, $user_id) {
 
         if ($this->databaseConnection()) {
-
+            $now = $this->time_now();
             $sql = "";
-            if ($balance != null) {
+            if ($balance >= 0) {
                 $sql .= "UPDATE $this->customer_balance_table ";
                 $sql .= " SET `Balance`= :balance, ";
-                $sql .= " `UpdateDate`= NOW() ";
+                $sql .= " `UpdateDate`= '$now' ";
                 $sql .= " WHERE `CustomerId`= :user_id ";
                 $sql .= " AND `AssetTypeId`= :asset_type ";
                 $sql .= "LIMIT 1";
 
                 $query = $this->db_connection->prepare($sql);
 
-                if ($balance != null) {
+                if ($balance >= 0) {
                     $query->bindParam("balance", $balance);
                 }
                 $query->bindParam("user_id", $user_id);
@@ -114,7 +123,7 @@ class Orders extends Users {
     public function insert_pending_order($orderTypeId, $qty, $price, $orderStatusId, $OfferAssetTypeId=null, $WantAssetTypeId=null) {
 
         if ($this->databaseConnection()) {
-
+            $now = $this->time_now();
             $messages = null;
 
             $this->customerId = isset($_SESSION['user_id']) ? $_SESSION['user_id'] : 0;
@@ -163,7 +172,7 @@ class Orders extends Users {
             }
 
             $query = $this->db_connection->prepare("INSERT INTO $this->orders_table (`OrderId`, `CustomerId`, `OrderTypeId`, `OfferAssetTypeId`, `WantAssetTypeId`, `Quantity`, `Price`, `OrderStatusId`, `UpdateDate`, `InsertDate`, `SaveDate`)
-                                    VALUES ('', " . $this->customerId . ", :a, :e, :f, :b, :c, :d, NULL, Now(), NULL)");
+                                    VALUES ('', " . $this->customerId . ", :a, :e, :f, :b, :c, :d, NULL, '$now', NULL)");
 
             $query->bindParam(':a', $this->orderTypeId, PDO::PARAM_STR);
             $query->bindParam(':e', $OfferAssetTypeId, PDO::PARAM_STR);
@@ -222,8 +231,9 @@ class Orders extends Users {
 
             $top_list = array();
 
-            $query = $this->db_connection->query("SELECT OrderId, customerId, Quantity, Price, (Quantity * Price) AS TOTAL_COST
-                                    FROM $top_table
+            $query = $this->db_connection->query("SELECT $top_table.OrderId, $top_table.customerId, $top_table.Quantity, $top_table.Price, ".USERS_TABLE.".Name
+                                    FROM $top_table, ".USERS_TABLE."
+                                    WHERE $top_table.customerId = ".USERS_TABLE.".CustomerId
                                     ORDER BY price $asc_desc
                                     LIMIT $this->max_top_bids
                                     ");
@@ -283,6 +293,23 @@ class Orders extends Users {
         return false;
     }
 
+    public function get_active_order_of_user($user_id, $top_table) {
+        if ($this->databaseConnection()) {
+            $query = $this->db_connection->prepare("
+                SELECT * FROM $top_table WHERE `customerId`= :uid ORDER BY `insertDate` DESC 
+            ");
+            $query->bindParam('uid', $user_id);
+            $query->execute();
+
+            $arr = array();
+            while ($qr = $query->fetchObject()) {
+                $arr[] = $qr;
+            }
+            return $arr;
+        }
+        return false;
+    }
+
     public function OrderMatchingQuery() {
 
         if ($this->databaseConnection()) {
@@ -325,7 +352,7 @@ class Orders extends Users {
 
     private function updateOrderStatus($orderId=null, $status=null) {
         if ($this->databaseConnection()) {
-            $query = $this->db_connection->prepare("UPDATE `orderbook` SET `OrderStatusId`= '$status' WHERE `OrderId` = :id LIMIT 1");
+            $query = $this->db_connection->prepare("UPDATE ".ORDERS_TABLE." SET `OrderStatusId`= '$status' WHERE `OrderId` = :id LIMIT 1");
             $query->bindParam("id", $orderId);
             if ($query->execute()) {
                 return true;
@@ -378,14 +405,21 @@ class Orders extends Users {
 
                             if ($buyer_balance_cash < $cost_of_total_supply) {
                                 /*Record the message*/
-                                //$this->storeMessages($buy_order_id, $buyer_id, $msg="Transaction failed: You have insufficient cash balance.");
-                                $message[] = "Transaction failed: You have insufficient cash balance.";
+                                $this->storeMessages($buy_order_id, $buyer_id, $msg="Transaction failed: You have insufficient cash balance.");
+                                if ($_SESSION['user_id'] == $buyer_id) {
+                                    $message[] = "Transaction failed: You have insufficient cash balance.";
+                                }
+                                // Delete the culprit order
+                                $this->del_order($buy_order_id, $buyer_id);
                                 break;
                             }
                             if (($seller_balance_btc == 0) || ($seller_balance_btc < $available->Quantity)) {
                                 /*Record the message*/
-                                //$this->storeMessages($seller_order_id, $seller_id, $msg="Transaction failed: You had insufficient RMT balance");
-                                $message[] = "Transaction failed: You had insufficient RMT balance";
+                                $this->storeMessages($seller_order_id, $seller_id, $msg="Transaction failed: You had insufficient RMT balance");
+                                if ($_SESSION['user_id'] == $seller_id) {
+                                    $message[] = "Transaction failed: You had insufficient RMT balance";
+                                }
+                                $this->del_order($seller_order_id, $seller_id);
                                 break;
                             }
 
@@ -397,15 +431,15 @@ class Orders extends Users {
                                 $new_buyer_balance_cash = $buyer_balance_cash - $cost_of_total_supply; // traditional or cash
 
                                 // subtract the debit access (customers balance of $ or BTC)
-                                $this->update_user_balance($assetType = 'btc', $balance = $new_buyer_balance_btc, $user_id = $buyer_id);
+                                $this->update_user_balance($assetType = 'btc', $balance = $new_buyer_balance_btc, $buyer_id);
 
                                 // increment the credit asset (customers balance of $ or BTC)
-                                $this->update_user_balance($assetType = 'traditional', $balance = $new_seller_balance_cash, $user_id = $seller_id);
+                                $this->update_user_balance($assetType = 'traditional', $balance = $new_seller_balance_cash, $seller_id);
 
                                 // record the commission in the commission account
                                 // decrease respective balances
-                                $this->update_user_balance($assetType = 'btc', $balance = $new_seller_balance_btc, $user_id = $seller_id);
-                                $this->update_user_balance($assetType = 'traditional', $balance = $new_buyer_balance_cash, $user_id = $buyer_id);
+                                $this->update_user_balance($assetType = 'btc', $balance = $new_seller_balance_btc, $seller_id);
+                                $this->update_user_balance($assetType = 'traditional', $balance = $new_buyer_balance_cash, $buyer_id);
                             }
 
                             $this->demanded_qty = $this->demanded_qty - $available->Quantity;
@@ -447,12 +481,20 @@ class Orders extends Users {
 
                             if ($buyer_balance_cash < $cost_of_total_supply) {
                                 /*Record the message*/
-                                //$this->storeMessages($buy_order_id, $buyer_id, $msg="Transaction failed: You had insufficient cash balance.");
+                                $this->storeMessages($buy_order_id, $buyer_id, $msg="Transaction failed: You had insufficient cash balance.");
+                                if ($_SESSION['user_id'] == $buyer_id) {
+                                    $message[] = "Transaction failed: You have insufficient cash balance.";
+                                }
+                                $this->del_order($buy_order_id, $buyer_id);
                                 break;
                             }
                             if (($seller_balance_btc == 0) || ($seller_balance_btc < $available->Quantity)) {
                                 /*Record the message*/
-                                //$this->storeMessages($seller_order_id, $seller_id, $msg="Transaction failed: You had insufficient RMT balance.");
+                                $this->storeMessages($seller_order_id, $seller_id, $msg="Transaction failed: You had insufficient RMT balance.");
+                                if ($_SESSION['user_id'] == $seller_id) {
+                                    $message[] = "Transaction failed: You had insufficient RMT balance";
+                                }
+                                $this->del_order($seller_order_id, $seller_id);
                                 break;
                             }
 
@@ -513,12 +555,20 @@ class Orders extends Users {
 
                             if ($buyer_balance_cash < $cost_of_total_supply) {
                                 /*Record the message*/
-                                //$this->storeMessages($buy_order_id, $buyer_id, $msg="Transaction failed: You had insufficient cash balance.");
+                                $this->storeMessages($buy_order_id, $buyer_id, $msg="Transaction failed: You had insufficient cash balance.");
+                                if ($_SESSION['user_id'] == $buyer_id) {
+                                    $message[] = "Transaction failed: You have insufficient cash balance.";
+                                }
+                                $this->del_order($buy_order_id, $buyer_id);
                                 break;
                             }
                             if (($seller_balance_btc == 0) || ($seller_balance_btc < $this->demanded_qty)) {
                                 /*Record the message*/
-                                //$this->storeMessages($seller_order_id, $seller_id, $msg="Transaction failed: You had insufficient RMT balance.");
+                                $this->storeMessages($seller_order_id, $seller_id, $msg="Transaction failed: You had insufficient RMT balance.");
+                                if ($_SESSION['user_id'] == $seller_id) {
+                                    $message[] = "Transaction failed: You had insufficient RMT balance";
+                                }
+                                $this->del_order($seller_order_id, $seller_id);
                                 break;
                             }
 
@@ -590,10 +640,10 @@ class Orders extends Users {
 
     private function record_transaction($buyer, $buy_order_id, $buy_amount, $buy_commission, $seller, $sell_order_id, $sell_amount, $sell_commission, $trade_qty) {
         if ($this->databaseConnection()) {
-
+            $now = $this->time_now();
             $query = $this->db_connection->prepare("
             INSERT INTO $this->transaction_table(`TransactionId`, `a_buyer`, `A_OrderId`, `A_Amount`, `A_Commission`, `b_seller`, `B_OrderId`, `B_Amount`, `B_Commission`, `qty_traded`, `UpdateDate`, `InsertDate`, `SaveDate`)
-            VALUES ('', :buyer,:buy_order_id, :buy_amount, :buy_commission, :seller, :sell_order_id, :sell_amount, :sell_commission, :trade_qty, NULL, NOW(), NOW())
+            VALUES ('', :buyer,:buy_order_id, :buy_amount, :buy_commission, :seller, :sell_order_id, :sell_amount, :sell_commission, :trade_qty, NULL, '$now', '$now')
             ");
             $query->bindParam("buyer", $buyer);
             $query->bindParam("buy_order_id", $buy_order_id);
@@ -626,9 +676,10 @@ class Orders extends Users {
     private function update_quantity($top_table, $qty, $orderId) {
 
         if ($this->databaseConnection()) {
+            $now = $this->time_now();
             $query = $this->db_connection->prepare("
                 UPDATE $top_table
-                SET `quantity`= :qty, `insertDate`=NOW()
+                SET `quantity`= :qty, `insertDate`='$now'
                 WHERE orderId = :orderId
                 LIMIT 1
             ");
@@ -644,9 +695,9 @@ class Orders extends Users {
 
     private function insert_market_order($customerId, $orderTypeId, $OfferAssetTypeId=null, $WantAssetTypeId=null, $qty, $price) {
         if ($this->databaseConnection()) {
-
+            $now = $this->time_now();
             $query = $this->db_connection->prepare("INSERT INTO $this->orders_table (`OrderId`, `CustomerId`, `OrderTypeId`, `OfferAssetTypeId`, `WantAssetTypeId`, `Quantity`, `Price`, `OrderStatusId`, `MarketOrder`, `UpdateDate`, `InsertDate`, `SaveDate`)
-                                VALUES ('', :u, :a, :d, :e, :b, :c, 1, 1, NULL, Now(), NULL)
+                                VALUES ('', :u, :a, :d, :e, :b, :c, 1, 1, NULL, '$now', NULL)
                               ");
             $query->bindParam(':u', $customerId, PDO::PARAM_INT);
             $query->bindParam(':a', $orderTypeId, PDO::PARAM_INT);
@@ -688,7 +739,7 @@ class Orders extends Users {
                 if(is_float($qty) || is_int($qty)) {
                     if ($qty > 0) {
 
-                        $sell_list = $this->get_top_buy_sell_list($top_table='active_selling_list', $asc_desc='ASC');
+                        $sell_list = $this->get_top_buy_sell_list($top_table=TOP_SELL_TABLE, $asc_desc='ASC');
 
                         if (!empty($sell_list)) {
 
@@ -775,7 +826,7 @@ class Orders extends Users {
                                         // Delete the row from Sell list
                                         $this->delete_order($this->top_sell_table, $available->OrderId);
 
-                                        // Update Order Status in Orderbook
+                                        // Update Order Status in Order table
                                         $this->UpdateOrderStatus($available->OrderId, '1');
 
                                         $message[] = "Instant Transaction Successful: You bought $available->Quantity RMT at $ $available->Price per token for $ $cost_of_total_supply.";
@@ -850,7 +901,7 @@ class Orders extends Users {
                                         // Delete the row from Sell list
                                         $this->delete_order($this->top_sell_table, $available->OrderId);
 
-                                        // Update Order Status in Orderbook
+                                        // Update Order Status in Order table
                                         $this->UpdateOrderStatus($buy_order_id, '1');
                                         $this->UpdateOrderStatus($available->OrderId, '1');
 
@@ -909,7 +960,7 @@ class Orders extends Users {
                                         // update the quantity field for supply
                                         $this->update_quantity($top_table = $this->top_sell_table, $available->Quantity, $available->OrderId);
 
-                                        // Update Order Status in Orderbook
+                                        // Update Order Status in Order table
                                         $this->UpdateOrderStatus($buy_order_id, '1');
 
                                         $message[] = "Instant Transaction Successful: You bought $qty tokens at $ $available->Price per token for $ $cost_of_total_supply.";
@@ -925,8 +976,8 @@ class Orders extends Users {
                                 }
                                 if (($available->Quantity <= 0) && ($qty > 0) && ($key === $last_iter)) {
                                     /*The supply of token is 0. Stop further transaction. */
-                                    $message[] = "Instant Transaction failure: There's no token left to be sold any more. $qty tokens could not be sold.";
-                                    $this->storeMessages($buy_order_id=null, $buyer_id, $msg="There's no token left to be sold any more. $qty tokens could not be sold.");
+                                    $message[] = "Instant Transaction failure: There's no token left to be sold any more. $qty tokens could not be bought.";
+                                    $this->storeMessages($buy_order_id=null, $buyer_id, $msg="There's no token left to be sold any more. $qty tokens could not be bought.");
                                 }
                             }
                             return $message;
@@ -941,7 +992,7 @@ class Orders extends Users {
                 if(is_float($qty) || is_int($qty)) {
                     if ($qty > 0) {
 
-                        $buy_list = $this->get_top_buy_sell_list($top_table='active_buy_list', $asc_desc='DESC');
+                        $buy_list = $this->get_top_buy_sell_list($top_table=TOP_BUYS_TABLE, $asc_desc='DESC');
 
                         if (!empty($buy_list)) {
                             foreach ($buy_list as $available) {
@@ -1022,7 +1073,7 @@ class Orders extends Users {
                                         // Delete the row from buy list
                                         $this->delete_order($this->top_buy_table, $available->OrderId);
 
-                                        // Update Order Status in Orderbook
+                                        // Update Order Status in Order table
                                         $this->UpdateOrderStatus($available->OrderId, '1');
 
                                         // Record the transaction
@@ -1089,7 +1140,7 @@ class Orders extends Users {
 
                                         $qty = $qty - $available->Quantity;
 
-                                        // Update Order Status in Orderbook
+                                        // Update Order Status in Order table
                                         $this->UpdateOrderStatus($sell_order_id, '1');
                                         $this->UpdateOrderStatus($available->OrderId, '1');
 
@@ -1155,7 +1206,7 @@ class Orders extends Users {
                                         // update the quantity field for supply
                                         $this->update_quantity($top_table = $this->top_buy_table, $available->Quantity, $available->OrderId);
 
-                                        // Update Order Status in Orderbook
+                                        // Update Order Status in Order table
                                         $this->UpdateOrderStatus($sell_order_id, '1');
 
                                         $message[] = "Instant Transaction Successful: You sold $qty tokens for $ $cost_of_total_supply.";
@@ -1186,8 +1237,8 @@ class Orders extends Users {
             $list = array();
 
             $query = $this->db_connection->query("
-                SELECT TransactionId AS T_ID, a_buyer AS BUYER_ID, b_seller AS SELLER_ID, (SELECT customer.Name FROM customer WHERE customer.CustomerId=BUYER_ID) AS BUYER, (SELECT customer.Name FROM customer WHERE customer.CustomerId=SELLER_ID) AS SELLER, B_AMOUNT AS TRADE_PRICE, transaction.InsertDate, transaction.qty_traded AS TRADED_QTY
-                FROM transaction, customer
+                SELECT TransactionId AS T_ID, a_buyer AS BUYER_ID, b_seller AS SELLER_ID, (SELECT ".USERS_TABLE.".Name FROM ".USERS_TABLE." WHERE ".USERS_TABLE.".CustomerId=BUYER_ID) AS BUYER, (SELECT ".USERS_TABLE.".Name FROM ".USERS_TABLE." WHERE ".USERS_TABLE.".CustomerId=SELLER_ID) AS SELLER, B_AMOUNT AS TRADE_PRICE, ".TRANSACTIONS_TABLE.".InsertDate, ".TRANSACTIONS_TABLE.".qty_traded AS TRADED_QTY
+                FROM ".TRANSACTIONS_TABLE.", ".USERS_TABLE."
                 GROUP BY T_ID
                 ORDER BY T_ID DESC
                 LIMIT $start, $limit
@@ -1212,16 +1263,16 @@ class Orders extends Users {
             $extraQuerry = "";
 
             if ($is_active != null) {
-                $extraQuerry = "WHERE customer.is_active = 0 OR customer.is_active = 1";
+                $extraQuerry = "WHERE ".USERS_TABLE.".is_active = 0 OR ".USERS_TABLE.".is_active = 1";
             } else {
-                $extraQuerry = "WHERE customer.is_active = 1";
+                $extraQuerry = "WHERE ".USERS_TABLE.".is_active = 1";
             }
 
             $query = $this->db_connection->query("
-                SELECT customer.CustomerId AS UID, customer.Name, customer.is_active,
-                (SELECT assetbalance.Balance FROM assetbalance WHERE assetbalance.AssetTypeId='btc' AND assetbalance.CustomerId=UID) AS BTC, 
-                (SELECT assetbalance.Balance FROM assetbalance WHERE assetbalance.AssetTypeId='traditional' AND assetbalance.CustomerId=UID) AS CASH 
-                FROM customer, assetbalance 
+                SELECT ".USERS_TABLE.".CustomerId AS UID, ".USERS_TABLE.".Name, ".USERS_TABLE.".is_active, ".USERS_TABLE.".fb_id AS FACEBOOK_ID,
+                (SELECT ".CREDITS_TABLE.".Balance FROM ".CREDITS_TABLE." WHERE ".CREDITS_TABLE.".AssetTypeId='btc' AND ".CREDITS_TABLE.".CustomerId=UID) AS BTC, 
+                (SELECT ".CREDITS_TABLE.".Balance FROM ".CREDITS_TABLE." WHERE ".CREDITS_TABLE.".AssetTypeId='traditional' AND ".CREDITS_TABLE.".CustomerId=UID) AS CASH 
+                FROM ".USERS_TABLE.", ".CREDITS_TABLE." 
                 $extraQuerry
                 GROUP BY UID ORDER BY MAX(BTC) DESC
             ");
@@ -1241,7 +1292,7 @@ class Orders extends Users {
         if ($this->databaseConnection()) {
 
             $query = $this->db_connection->query("
-                SELECT `B_Amount` FROM `transaction` ORDER BY `InsertDate` DESC LIMIT 1
+                SELECT `B_Amount`,InsertDate FROM ".TRANSACTIONS_TABLE." ORDER BY `InsertDate` DESC LIMIT 1
             ");
 
             if ($query->rowCount() == 1) {
@@ -1259,7 +1310,7 @@ class Orders extends Users {
             $list = array();
             $query = $this->db_connection->prepare("
             SELECT `OrderId`, `CustomerId`, `OrderTypeId`, `OfferAssetTypeId`, `WantAssetTypeId`, `Quantity`, `Price`, `OrderStatusId`, `MarketOrder`, `InsertDate`
-            FROM `orderbook`
+            FROM ".ORDERS_TABLE."
             WHERE `CustomerId`=:u_id
             ORDER  BY InsertDate DESC
             LIMIT $start, $limit
@@ -1278,23 +1329,11 @@ class Orders extends Users {
         return false;
     }
 
-    public function del_order($order_id) {
+    protected function cancel_order($order_id=null, $user_id=null) {
         if ($this->databaseConnection()) {
-
-            $user_id = 0;
-            if (!isset($_SESSION['user_id'])) {
-                return false;
-            }
-            $user_id = (int) $_SESSION['user_id'];
-            $is_owner = $this->isUserOrderOwner($order_id, $user_id);
-
-            if (!$is_owner) {
-                return false;
-            }
-
             $query = $this->db_connection->prepare("
-                DELETE FROM `active_buy_list` WHERE `orderId`=:id AND customerId = :cus_id;
-                DELETE FROM `active_selling_list` WHERE `orderId`=:id AND customerId = :cus_id
+                DELETE FROM ".TOP_BUYS_TABLE." WHERE `orderId`=:id AND customerId = :cus_id;
+                DELETE FROM ".TOP_SELL_TABLE." WHERE `orderId`=:id AND customerId = :cus_id
             ");
 
             $query->bindParam('id', $order_id);
@@ -1304,7 +1343,7 @@ class Orders extends Users {
             unset($query); // Unset the query
 
             $q = $this->db_connection->prepare("
-                    UPDATE `orderbook` SET `OrderStatusId`= 0 
+                    UPDATE ".ORDERS_TABLE." SET `OrderStatusId`= 0 
                     WHERE `OrderId` = :ord
                     AND CustomerId = :cust_id
                   ");
@@ -1315,29 +1354,64 @@ class Orders extends Users {
             unset($q);
 
             $query2 = $this->db_connection->prepare("
-                        SELECT * FROM `active_buy_list` WHERE `orderId`=:o_id;
-                        SELECT * FROM `active_selling_list` WHERE `orderId`=:o_id
+                        SELECT * FROM ".TOP_BUYS_TABLE." WHERE `orderId`=:o_id;
+                        SELECT * FROM ".TOP_SELL_TABLE." WHERE `orderId`=:o_id
                     ");
             $query2->bindParam('o_id', $order_id);
 
             if ($query2->execute()) {
                 if ($query2->rowCount() == 0) {
+                    if ($_SESSION['user_id']==ADMIN_ID) {
+                        $this->storeMessages($order_id, ADMIN_ID, $msg="Order number $order_id was deleted by user id ".ADMIN_ID);
+                        $this->storeMessages($order_id, $user_id, $msg="Order number $order_id was deleted by Admin.");
+                    } else {
+                        $this->storeMessages($order_id, $user_id, $msg="Order number $order_id was deleted by you.");
+                    }
                     return true; // This means row was actually deleted
                 }
             }
-
         }
         return false;
     }
 
-    private function storeMessages($order_id=null, $user_id=null, $msg=null) {
-        if($this->databaseConnection()) {
+    public function del_order($order_id, $usid=null) {
+        if ($this->databaseConnection()) {
 
-            $username = (string) trim($this->check_user($user_id)->Username);
+            $user_id = 0;
+            if (!isset($_SESSION['user_id'])) {
+                return false;
+            }
+            $user_id = (int) $_SESSION['user_id'];
+            // Allow Admin to delete order, if its not admin check owner of order
+            if ($usid == null) {
+                $is_owner = $this->isUserOrderOwner($order_id, $user_id);
+
+                if (!$is_owner) {
+                    return false;
+                }
+            } else if(($usid != null) && ($user_id == ADMIN_ID)) {   // This else part to be used by admin in delete_orders_of_user()
+                $user_id = $usid;
+            } else {
+                return false;
+            }
+
+            // Finally cancel the order
+            return $this->cancel_order($order_id, $user_id);
+        }
+        return false;
+    }
+
+    public function storeMessages($order_id=null, $user_id=null, $msg=null) {
+        if($this->databaseConnection()) {
+            $now = $this->time_now();
+            if ($user_id == false) {
+                return false;
+            }
+            $username = $this->get_username($user_id);
 
             $query = $this->db_connection->prepare("
-                INSERT INTO `messages`(`id`, `order_id`, `username_key`, `username`, `messages`, `datetime`) 
-                VALUES ('', :order_id, :user_id, :username, :msg, NOW())
+                INSERT INTO ".MSG_TABLE."(`id`, `order_id`, `username_key`, `username`, `messages`, `datetime`) 
+                VALUES ('', :order_id, :user_id, :username, :msg, '$now')
             ");
             $query->bindParam("order_id", $order_id);
             $query->bindParam("user_id", $user_id);
@@ -1366,7 +1440,7 @@ class Orders extends Users {
             }
             $query = $this->db_connection->prepare("
                 SELECT COUNT(*) AS MY_TOTAL_MESSAGES
-                FROM `messages`
+                FROM ".MSG_TABLE."
                 WHERE `username_key`=:u_id
             ");
             $query->bindParam('u_id', $user_id);
@@ -1390,7 +1464,7 @@ class Orders extends Users {
             }
             $query = $this->db_connection->prepare("
                 SELECT COUNT(*) AS MY_TOTAL_ORDERS
-                FROM `orderbook`
+                FROM ".ORDERS_TABLE."
                 WHERE `CustomerId`=:u_id
             ");
             $query->bindParam('u_id', $user_id);
@@ -1414,7 +1488,7 @@ class Orders extends Users {
             }
             $query = $this->db_connection->prepare("
                 SELECT COUNT(*) AS MY_TOTAL_ORDERS
-                FROM `transaction`
+                FROM ".TRANSACTIONS_TABLE."
                 WHERE `a_buyer`= :u_id OR `b_seller`= :u_id
             ");
             $query->bindParam('u_id', $user_id);
@@ -1434,7 +1508,7 @@ class Orders extends Users {
 
             $query = $this->db_connection->prepare("
                 SELECT COUNT(*) AS TOTAL_ORDERS
-                FROM `transaction`
+                FROM ".TRANSACTIONS_TABLE."
             ");
             if ($query->execute()) {
                 $fetch = $query->fetchObject();
@@ -1448,7 +1522,7 @@ class Orders extends Users {
     private function isUserOrderOwner($order_id=0, $user_id=0) {
         if ($this->databaseConnection()) {
             $query = $this->db_connection->prepare("
-                SELECT `OrderId` FROM `orderbook` 
+                SELECT `OrderId` FROM ".ORDERS_TABLE." 
                 WHERE `OrderId`=:o_id 
                 AND `CustomerId`=:c_id
                 LIMIT 1
@@ -1459,6 +1533,185 @@ class Orders extends Users {
                 if ($query->rowCount()==1) {
                     return true;
                 }
+            }
+        }
+        return false;
+    }
+
+    public function storeMessagesPublic($order_id=null, $user_id=null, $msg=null) {
+        if ($this->databaseConnection()) {
+            $this->storeMessages($order_id, $user_id, $msg);
+        }
+    }
+
+    /*Add bank account*/
+    public function add_bank_account($user_id, $holder, $bank_name, $account_num, $branch_name, $bank_addr, $bk_ctry) {
+        if ($this->databaseConnection()) {
+            $now = $this->time_now();
+            $query = $this->db_connection->prepare(
+                "INSERT INTO $this->bank_acc(`id`, `user_id`, `acc_holder`, `bank_name`, `acc_num`, `branch_name`, `bank_addr`, `bank_ctry`, `date_added`) 
+                 VALUES ('', :uid, :holder, :bk_name, :acc_num, :br_name, :addr, :ctry, '$now')"
+            );
+            $query->bindParam("uid", $user_id);
+            $query->bindParam("holder", $holder);
+            $query->bindParam("bk_name", $bank_name);
+            $query->bindParam("acc_num", $account_num);
+            $query->bindParam("br_name", $branch_name);
+            $query->bindParam("addr", $bank_addr);
+            $query->bindParam("ctry", $bk_ctry);
+
+            if ($query->execute()) {
+                $this->storeMessages(null, $user_id, $msg="You added a new bank account number $account_num.");
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public function send_notice_mail($reciever_email, $email_from, $email_sender, $email_subject, $email_body) {
+        $mail = new SendMail();
+        $do_mail = $mail->do_email($reciever_email, $email_from, $email_sender, $email_subject, $email_body);
+        if ($do_mail==true) {
+            return $do_mail;
+        }
+        return false;
+    }
+
+    public function get_bank_details($user_id, $acc=null) {
+        $acc_details = null;
+        if ($this->databaseConnection()) {
+
+            $ex = "";
+            if ($acc != null) {
+                $ex = "AND `acc_num`=:acc";
+            }
+
+            $query = $this->db_connection->prepare(
+                "SELECT * FROM $this->bank_acc WHERE `user_id`=:uid $ex"
+            );
+            $query->bindParam("uid", $user_id);
+            if ($acc != null) {
+                $query->bindParam("acc", $acc);
+            }
+            $query->execute();
+
+            if ($query->rowCount() > 0) {
+                while ($acc_info = $query->fetchObject()) {
+                    $acc_details[] = $acc_info;
+                }
+            }
+        }
+        return $acc_details;
+    }
+
+    /*Fund transfer*/
+    public function fund_transfer($fund_type, $from, $to, $amount, $remarks, $assetType) {
+        $user_id = (isset($_SESSION['user_id']) && (int) $_SESSION['user_id'] != 0) ? $_SESSION['user_id'] : 0;
+        $now = $this->time_now();
+        if ($this->databaseConnection() && $user_id != 0) {
+
+            $user_bal_currently = (float)$this->check_customer_balance($assetType, $user_id)->Balance;
+
+            $new_bal = (float)$user_bal_currently - $amount;
+
+            $ft = $this->update_user_balance($assetType, $new_bal, $user_id);
+
+            if ($user_bal_currently == null || $ft == null) {
+                return false;
+            }
+
+            $sign = ($assetType == 'btc') ? 'RTM':'$';
+
+            $query = $this->db_connection->prepare(
+                "INSERT INTO ".TRANSFER_INFO_TABLE."(`id`, `user_id`, `fund_type`, `tr_from`, `tr_to`, `fund_amount`, `remarks`, `datetime`) 
+                 VALUES('', :uid, :fund_type, :tr_from, :tr_to, :tr_amount, :remarks, '$now')"
+            );
+            $query->bindParam('uid', $user_id);
+            $query->bindParam('fund_type', $fund_type);
+            $query->bindParam('tr_from', $from);
+            $query->bindParam('tr_to', $to);
+            $query->bindParam('tr_amount', $amount);
+            $query->bindParam('remarks', $remarks);
+
+            if ($query->execute()) {
+                $this->storeMessages(null, $user_id, $msg="You have requested to transfer $sign $amount to bank account number $to.");
+                return true;
+            }
+        }
+        return false;
+    }
+    
+    public function record_root_bal_update($uid, $bal_prev, $bal_now, $bal_type) {
+        if ($this->databaseConnection()) {
+            $now = $this->time_now();
+            $root = isset($_SESSION['user_id']) ? $_SESSION['user_id'] : 0;
+            $query = $this->db_connection->prepare("
+                INSERT INTO ".ADMIN_BAL_RECORDS."(`BalStatusHistoryId`, `user_id`, `bal_prev`, `bal_now`, `type`, `root_id`, `UpdateDate`) 
+                VALUES ('', :uid, :prev, :now, :btype, :root, '$now')
+            ");
+            $query->bindParam("uid", $uid);
+            $query->bindParam("prev", $bal_prev);
+            $query->bindParam("now", $bal_now);
+            $query->bindParam("btype", $bal_type);
+            $query->bindParam("root", $root);
+
+            if ($query->execute()) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public function list_root_bal_changes() {
+        if ($this->databaseConnection()) {
+            $list_details = array();
+            $query = $this->db_connection->prepare(" 
+                SELECT ".ADMIN_BAL_RECORDS.".*, ".USERS_TABLE.".Name, ".USERS_TABLE.".Email 
+                FROM ".ADMIN_BAL_RECORDS.", ".USERS_TABLE." 
+                WHERE ".ADMIN_BAL_RECORDS.".user_id=".USERS_TABLE.".CustomerId
+                ORDER BY UpdateDate DESC
+                LIMIT 200
+            ");
+            $query->execute();
+
+            if ($query->rowCount() > 0) {
+                while ($list = $query->fetchObject()) {
+                    $list_details[] = $list;
+                }
+            }
+            return $list_details;
+        }
+        return false;
+    }
+
+    public function get_last_order_date($date=null) {
+        if ($this->databaseConnection()) {
+            $query = $this->db_connection->query("SELECT * FROM `orderbook` WHERE `InsertDate`> '$date'");
+            if ($query->rowCount()) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public function delete_orders_of_user($user_id=null) {
+        if ($this->databaseConnection()) {
+            $order_ids = array();
+            $query = $this->db_connection->prepare("
+            SELECT orderId FROM ".TOP_BUYS_TABLE." WHERE `customerId`=:uid
+            UNION
+            SELECT orderId FROM ".TOP_SELL_TABLE." WHERE `customerId`=:uid
+            ");
+            $query->bindParam('uid', $user_id);
+            $query->execute();
+            if ($query->rowCount() > 0) {
+                while ($rr = $query->fetchObject()) {
+                    $order_ids[] = $rr;
+                }
+                foreach ($order_ids as $oid) {
+                    $this->del_order($oid->orderId, $user_id);
+                }
+                return true;
             }
         }
         return false;

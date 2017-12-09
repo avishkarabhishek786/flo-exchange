@@ -57,17 +57,17 @@ if (isset($_POST['task']) && trim($_POST['task'])=='loadMyOrdersList') {
         }
 
          $iter .= "<tr>";
-         $iter .= "<td>$myOrder->OfferAssetTypeId</td>";
-         $iter .= "<td>$myOrder->WantAssetTypeId</td>";
          $iter .= "<td>$myOrder->Price</td>";
          $iter .= "<td>$myOrder->Quantity</td>";
-         $iter .= "<td>$status</td>";
-         $iter .= "<td>".date('d M, Y h:i:sa', strtotime($myOrder->InsertDate))."</td>";
          $iter .= "<td>";
          if(trim($status) == 'Pending') {
-             $iter .= "<button class='btn-xs btn btn-danger del_order' id='del_$myOrder->OrderId'>Cancel</button>";
+             $iter .= "<button class='btn-danger del_order' id='del_$myOrder->OrderId'>Cancel</button>";
          }
          $iter .= "</td>";
+         $iter .= "<td>$myOrder->OfferAssetTypeId</td>";
+         $iter .= "<td>$myOrder->WantAssetTypeId</td>";
+         $iter .= "<td>$status</td>";
+         $iter .= "<td>".date('d M, Y h:i:sa', strtotime($myOrder->InsertDate))."</td>";
          $iter .= "</tr>";
      endforeach;
         }
