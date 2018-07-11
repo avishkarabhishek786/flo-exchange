@@ -14,7 +14,6 @@ if (($user_email == null) && ($user_logged_in == true)) {
         $email = trim($_POST['user_em_id']);
         $updateEmail = $UserClass->input_user_email($email, $user_id);
         if ($updateEmail) {
-            $_SESSION['email'] = $email;
             redirect_to("index.php?msg=Email updated as $email successfully.&type=success");
         }
         redirect_to("index.php?msg=Email could not be updated.&type=warning");

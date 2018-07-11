@@ -72,6 +72,19 @@
                     redirect_to("rm_root.php?msg=Invalid balance type!");
                     return false;
                 }
+
+            /*Restrict decimal places while updating balance*/
+                if ($assetType == "traditional") {
+                    if (!validate_decimal_place($balance, 2)) {
+                        redirect_to("rm_root.php?msg=Max 2 decimal places allowed in Fiat balance.!");
+                        return false;
+                    }
+                } else if ($assetType == "btc") {
+                    if (!validate_decimal_place($balance, 10)) {
+                        redirect_to("rm_root.php?msg=Max 10 decimal places allowed in RMT balance.!");
+                        return false;
+                    }
+                }
                 
                 //Prev balance of user
                 $bal_prev = (float) $OrderClass->check_customer_balance($assetType, $investor_id)->Balance;
@@ -101,7 +114,7 @@
          ?>
 
             <div class="container mt--2">
-
+                <h2>Actions table</h2>
                 <div class="mt--2 mb--2 p--1">
                     <form class="form-inline" method="post" action="<?php echo htmlspecialchars($_SERVER["PHP_SELF"]);?>">
                         <div class="form-group">
@@ -169,6 +182,31 @@
                     </table>
                 </div>
             </div>
+
+
+            <!--Transfer tokens-->
+            <div class="container mt--2">
+                <h2>Transfer tokens</h2>
+                <div class="mt--2 mb--2 p--1">
+                    <div class="form-inline">
+                        <div class="form-group">
+                            <label class="sr-only" for="cust_id-fr">From (User Id)</label>
+                            <input type="number" class="form-control" name="cust_id-fr" id="cust_id-fr" placeholder="From (User Id)">
+                        </div>
+                        <div class="form-group">
+                            <label class="sr-only" for="cust_id_to">To (User Id)</label>
+                            <input type="number" class="form-control" name="cust_id_to" id="cust_id_to" placeholder="To (User Id)">
+                        </div>
+                        <div class="form-group">
+                            <label class="sr-only" for="toke_amt">Amount of RMTs to transfer </label>
+                            <input type="text" class="form-control" name="toke_amt" id="toke_amt" placeholder="Amount of RMTs to transfer">
+                        </div>
+                        <input type="submit" class="btn-sm mt--1" id="btn-tr" value="Transfer tokens">
+                    </div>
+                </div>
+            </div>
+
+            <!--History-->
             
             <div class="container mt--2">
             <div class="table-responsive">
@@ -331,6 +369,57 @@
         } 
         
     }
+
+    // Token transfer
+    $(document).on('click', '#btn-tr', function (e) {
+        var _from = $('#cust_id-fr').val();
+        var _to = $('#cust_id_to').val();
+        var _tokens = $('#toke_amt').val();
+        var job = 'transfer_tokens';
+        var btn = this;
+
+        $(btn).val('Please wait....').prop( "disabled", true );
+
+        $.ajax({
+                method: 'post',
+                url: 'ajax/transfer_tokens.php',
+                data: {job:job, _from:_from, _to:_to, _tokens:_tokens}
+            }).error(function(xhr, status, error) {
+                console.log(xhr, status, error);
+            }).success(function(data) {
+            $(btn).val('Transfer RMTs').prop( "disabled", false );
+            if ($.trim(data) != '' && $.trim(data) != undefined && $.trim(data) != null) {
+                var IS_JSON = true;
+                try {
+                    var d = jQuery.parseJSON(data);
+                }
+                catch(err) {
+                    IS_JSON = false;
+                }
+
+                if(IS_JSON) {
+                    if (isArray(d.mesg) && d.mesg.length != 0) {
+                        var tp = 'info';
+                        if(d.error == true) {
+                            tp = 'danger'
+                        } else if(d.error == false) {
+                            tp = 'success';
+                        }
+                        for (var k = 0; k <= d.mesg.length - 1; k++) {
+
+                            $.notify({
+                                title: "<strong>Alert!:</strong> ",
+                                message: d.mesg[k]
+                            },{
+                                type: tp
+                            });
+                        }
+                    }
+                }
+            }
+            });
+
+    });
     
 
 </script>

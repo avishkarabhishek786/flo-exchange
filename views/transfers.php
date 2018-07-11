@@ -20,6 +20,7 @@ if($user_logged_in):
                     <li><a data-toggle="tab" href="#menu2">Send Cash to my Bank Account</a></li>
                     <li><a data-toggle="tab" href="#menu3">Pay me in Bitcoins</a></li>
                     <li><a data-toggle="tab" href="#menu4" id="get_btc_price">Load Cash to my trading account</a></li>
+                    <!--<li><a data-toggle="tab" href="#menu5">Send RMTs to Blockchain Contracts Exchange</a></li>-->
                 </ul>
 
                 <div class="tab-content">
@@ -124,6 +125,13 @@ if($user_logged_in):
                         <input type="button" value="Send Details" class="btn btn-primary mt--1" id="lcma_btn">
 
                         <h5>AFTER SUBMITTING THE FORM PLEASE SEND THE BITCOINS TO THE FOLLOWING ADDRESS: <strong class="text--bold text-info">1G1ERvMD1mcNuuuyL3cY4ZgmCjth5K3GuH</strong></h5>
+                    </div>
+                    
+                    <div id="menu5" class="tab-pane fade">
+                        <h3>Send RMT to Blockchain Contract Exchange</h3>
+                        <label for="_nrs">Please enter the number of RMTs to send.</label>
+                        <input class="form-control" id="_nrs" type="text"/>
+                        <input type="button" value="Transfer RMTs" class="btn btn-primary mt--1" id="nrs_btn">
                     </div>
                 </div>
             </div>

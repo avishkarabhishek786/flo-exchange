@@ -14,7 +14,7 @@
 
             <th>  Tokens</th>
 
-            <th> Cash</th>
+            <th> Cash ($)</th>
 
         </tr>
 

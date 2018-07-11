@@ -18,16 +18,16 @@ if (isset($tradersList) && is_array($tradersList) && !empty($tradersList)) { ?>
             <div class="col-lg-6">
                 <h4>Recent Transactions</h4>
                 <h5><a href="Recent_Transactions" target="_blank">View All</a></h5>
-                <div class="table-responsive mt--2">
+                <div class="table-responsive">
                     <table class="table table-borderless table-striped">
                     <thead>
                     <tr>
-                        <th>Seller: </th>
-                        <th>Buyer: </th>
-                        <th>Trade Price: </th>
-                        <th>Trade Qty: </th>
-                        <th>Transaction Amount: </th>
-                        <th>Trade Date: </th>
+                        <th>Seller</th>
+                        <th>Buyer</th>
+                        <th>Price ($)</th>
+                        <th>Qty</th>
+                        <th>Total ($)</th>
+                        <th>Date</th>
                     </tr>
                     </thead>
                     <tbody id="trade-list"></tbody>

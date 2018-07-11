@@ -40,8 +40,10 @@ if(isset($_POST['job']) && $_POST['job'] == 'market_order') {
     if(isset($_POST['qty'], $_POST['type'])) {
         $qty = (float) $_POST['qty'];
         $order_type = $_POST['type'];
+        
+        $is_valid_qty = validate_decimal_place($qty, 10);
 
-        if($qty >= 0.01) {
+        if(($qty >= 0.0000000001) && $is_valid_qty) {
             if(is_string($order_type)) {
                 if(trim($order_type) == 'market_buy_btn' || trim($order_type) == 'market_sell_btn') {
 
@@ -66,7 +68,7 @@ if(isset($_POST['job']) && $_POST['job'] == 'market_order') {
             }
         } else {
             $std->error = true;
-            $std->msg = 'Please insert a valid quantity.';
+            $std->msg = 'Please insert a valid quantity. Maximaum 10 decimal places allowed and minimum trade quantity is 0.0000000001 RMTs.';
         }
     }
     echo json_encode($std);

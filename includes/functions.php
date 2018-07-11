@@ -6,9 +6,8 @@
  * Time: 6:33 PM
  */
 
-function two_decimal_digit($num=0, $deci=2) {
-    //$decimal = abs(number_format((float)$num, $deci, '.', ''));
-    $decimal = (float)$num;
+function round_it($num=0, $deci=2) {
+    $decimal = abs(number_format((float)$num, $deci, '.', ''));
     return $decimal;
 }
 
@@ -91,4 +90,34 @@ function is_email($email='') {
         }
     }
     return false;
+}
+
+function validate_decimal_place($num=0, $decimal_allowed=2) {
+
+    $num = (float) $num;
+    $decimal_places = strlen(substr(strrchr($num, "."), 1));
+
+    //if(($decimal_places > 0) && ($decimal_places <= $decimal_allowed)) {
+    if($decimal_places <= $decimal_allowed) {
+        return true;
+    }
+    return false;
+}
+
+function get_bcx_user_by_email($em='') {
+    if (!is_email($em)) {
+        return false;
+    }
+
+    try {
+        $url = "https://bcx.ranchimall.net/bcx/api/user_by_email/".trim($em);
+
+        $json = file_get_contents($url);
+        $data = json_decode($json, TRUE);
+
+    } catch(Exception $e) {
+        $data = null;
+    }
+
+    return $data;
 }

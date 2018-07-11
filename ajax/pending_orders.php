@@ -46,9 +46,19 @@ if (isset($_POST['subject']) && trim($_POST['subject'])=='placeOrder') {
             return false;
         }
 
-        if ($qty < 0.01 || $item_price < 0.01) {
+        if ($qty < 0.0000000001 || $item_price < 0.01) {
             $std->error = true;
-            $std->msg = 'Please insert valid quantity and price. Minimum trade price is 1 cent.';
+            $std->msg = 'Please insert valid quantity and price. Minimum trade price is 1 cent and minimum trade quantity is 0.0000000001.';
+            echo json_encode($std);
+            return false;
+        }
+        
+        $isValidQty = validate_decimal_place($qty, 10);
+        $isValidPrice = validate_decimal_place($item_price, 2);
+
+        if (!$isValidQty || !$isValidPrice) {
+            $std->error = true;
+            $std->msg = 'Please insert valid quantity and price. Price can be set up to maximum 2 decimal places while RMT quantity can be traded up to maximum 10 decimal place.';
             echo json_encode($std);
             return false;
         }

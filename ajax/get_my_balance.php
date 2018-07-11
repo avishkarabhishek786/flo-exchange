@@ -30,7 +30,7 @@ if (isset($_POST['task']) && trim($_POST['task'])=='get_my_balance') {
         $bit_balance = $OrderClass->check_customer_balance($assetType = 'btc', $user_id)->Balance;
 
         $std->users = $validate_user;
-        $std->cash = $cash_balance;
+        $std->cash = round_it($cash_balance, 2);
         $std->bit = $bit_balance;
         $std->error = false;
 

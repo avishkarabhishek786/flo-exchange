@@ -122,7 +122,7 @@ if (isset($_POST['job']) && trim($_POST['job']) == "pay_in_btc") {
             return false;
         }
 
-        $reciever_email = [$senders_email];
+        $reciever_email = [$senders_email, PI, FINANCE];
         $email_from = RM;
         $email_sender = EMAIL_SENDER_NAME;
         $email_subject = EMAIL_SUBJECT;
